@@ -2,6 +2,7 @@ import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.Arrays;
 
+// TODO need to fix padding subroutine...
 public class AES_128 {
 
     static int[] key = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};//
