@@ -2,6 +2,9 @@ import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.Arrays;
 
+// Note: The padding routine is broken... the last 16 bytes of a message will be improperly encrypted if padding is required i.e.
+// otherwise the message needs to be in perfect lengths of 16 bytes e.g. 16, 32, 48 etc.
+
 // TODO need to fix padding subroutine...
 public class AES_128 {
 
