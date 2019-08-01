@@ -1,3 +1,5 @@
+package aes.encrypt.alg;
+
 import java.util.Arrays;
 
 public class AES_128 {
@@ -34,6 +36,7 @@ public class AES_128 {
     }
 
     public void printEncryptedMessage(){
+        System.out.println("*** Encrypted Message ***");
         System.out.println(this.encryptedHexValues);
     }
     private int[] doAlgorithm(char[] message, int[] key) {
