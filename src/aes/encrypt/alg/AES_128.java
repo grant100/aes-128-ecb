@@ -2,6 +2,7 @@ package aes.encrypt.alg;
 
 import java.util.Arrays;
 
+// TODO Implement decryption algorithm
 public class AES_128 {
 
     private char[] paddedMessage;
