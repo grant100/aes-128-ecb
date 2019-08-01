@@ -1,63 +1,42 @@
-import java.math.BigInteger;
-import java.util.ArrayList;
 import java.util.Arrays;
 
-// Note: The padding routine is broken... the last 16 bytes of a message will be improperly encrypted if padding is required i.e.
-// otherwise the message needs to be in perfect lengths of 16 bytes e.g. 16, 32, 48 etc.
-
-// TODO need to fix padding subroutine...
 public class AES_128 {
 
-    static int[] key = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};//
+    private char[] paddedMessage;
+    private String encryptedHexValues = "";
 
-    //static int[] key = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16};
-    static String message = "Message         ";
-
-    public static void main(String[] args) throws Exception {
+    private int lengthOfPaddedMessage;
+    private final int BLOCK_SIZE = 16;
 
 
-        int mlength = message.length();
-        int lengthOfPaddedMessage = mlength;
+    public void encrypt(int[] key, String message) {
 
-        if (lengthOfPaddedMessage % 16 != 0) {
-            lengthOfPaddedMessage = (lengthOfPaddedMessage / 16 + 1) * 16;
-        }
-
-        String paddedMessage = "";
-        for (int i = 0; i < lengthOfPaddedMessage; i++) {
-            if (i >= mlength) {
-                paddedMessage += "0x00";
-            } else {
-                paddedMessage += message.substring(i, i + 1);
-            }
-        }
-
+        // set padding if necessary
+        standardizeMessage(message);
 
         // expand the keys
         int expandedKey[] = new int[176];
-        AES_128 aes = new AES_128();
-        aes.keyExpansion(key, expandedKey);
+        keyExpansion(key, expandedKey);
 
         // encrypt
-        String hex = "";
-        ArrayList list = new ArrayList();
         int cnt = 0;
-        for (int i = 0; i < lengthOfPaddedMessage; i += 16) {
-            int[] state = aes.aesEncrypt(paddedMessage.substring(16 * cnt, (16 * cnt    ) + 16), expandedKey);
-            list.add(Arrays.asList(state));
+        for (int i = 0; i < getLengthOfPaddedMessage(); i += BLOCK_SIZE) {
+            int[] state = doAlgorithm(Arrays.copyOfRange(getPaddedMessage(), BLOCK_SIZE * cnt, (BLOCK_SIZE * cnt) + BLOCK_SIZE), expandedKey);
             cnt++;
 
-            for(int k =0; k < state.length; k++){
-                hex +=Integer.toHexString(state[k]) + " ";
+            for (int k = 0; k < state.length; k++) {
+                this.encryptedHexValues += Integer.toHexString(state[k]) + " ";
             }
-            hex+="\n";
+            this.encryptedHexValues += "\n";
         }
 
-        System.out.println(hex);
+
     }
 
-
-    private int[] aesEncrypt(String message, int[] key) throws Exception {
+    public void printEncryptedMessage(){
+        System.out.println(this.encryptedHexValues);
+    }
+    private int[] doAlgorithm(char[] message, int[] key) {
         int[] state = copyBlock(message);
         int numberOfRounds = 9;
 
@@ -66,7 +45,7 @@ public class AES_128 {
             subBytes(state);
             shiftRows(state);
             mixColumns(state);
-            addRoundKey(state, Arrays.copyOfRange(key, (16 * (i + 1)), key.length));
+            addRoundKey(state, Arrays.copyOfRange(key, (BLOCK_SIZE * (i + 1)), key.length));
         }
         subBytes(state);
         shiftRows(state);
@@ -74,31 +53,31 @@ public class AES_128 {
         return state;
     }
 
-    private int[] copyBlock(String message) throws Exception {
-        int[] state = new int[16];
-        for (int i = 0; i < 16; i++) {
-            state[i] = toHex(message.substring(i, i + 1));
+    private int[] copyBlock(char[] message) {
+        int[] state = new int[BLOCK_SIZE];
+        for (int i = 0; i < BLOCK_SIZE; i++) {
+            state[i] = toHex(message[i]);
         }
         return state;
     }
 
     // galois field polynomial addition in base 2 follows XOR truth table
     private void addRoundKey(int[] state, int[] roundKey) {
-        for (int i = 0; i < 16; i++) {
+        for (int i = 0; i < BLOCK_SIZE; i++) {
             state[i] ^= roundKey[i];
         }
     }
 
 
     private void subBytes(int[] state) {
-        for (int i = 0; i < 16; i++) {
+        for (int i = 0; i < BLOCK_SIZE; i++) {
             state[i] = sbox[state[i]];
         }
     }
 
 
     private void shiftRows(int[] state) {
-        int tmp[] = new int[16];
+        int tmp[] = new int[BLOCK_SIZE];
 
         tmp[0] = state[0];
         tmp[1] = state[5];
@@ -120,14 +99,14 @@ public class AES_128 {
         tmp[14] = state[6];
         tmp[15] = state[11];
 
-        for (int i = 0; i < 16; i++) {
+        for (int i = 0; i < BLOCK_SIZE; i++) {
             state[i] = tmp[i];
         }
     }
 
 
     private void mixColumns(int[] state) {
-        int tmp[] = new int[16];
+        int tmp[] = new int[BLOCK_SIZE];
 
         tmp[0] = (mul2[state[0]] ^ mul3[state[1]] ^ state[2] ^ state[3]);
         tmp[1] = (state[0] ^ mul2[state[1]] ^ mul3[state[2]] ^ state[3]);
@@ -149,18 +128,18 @@ public class AES_128 {
         tmp[14] = (state[12] ^ state[13] ^ mul2[state[14]] ^ mul3[state[15]]);
         tmp[15] = (mul3[state[12]] ^ state[13] ^ state[14] ^ mul2[state[15]]);
 
-        for (int i = 0; i < 16; i++) {
+        for (int i = 0; i < BLOCK_SIZE; i++) {
             state[i] = tmp[i];
         }
     }
 
 
     private void keyExpansion(int[] inputKey, int[] expandedKeys) {
-        for (int i = 0; i < 16; i++) {
+        for (int i = 0; i < BLOCK_SIZE; i++) {
             expandedKeys[i] = inputKey[i];
         }
 
-        int bytesGenerated = 16; // first 16 come from original key
+        int bytesGenerated = BLOCK_SIZE; // first 16 bytes come from original key
         int rconIteration = 1;
         int[] temp = new int[4];
 
@@ -172,12 +151,12 @@ public class AES_128 {
             }
 
             // perform expansion core once for each 16 byte key
-            if (bytesGenerated % 16 == 0) {
+            if (bytesGenerated % BLOCK_SIZE == 0) {
                 keyExpansionCore(temp, rconIteration++);
             }
 
             for (int i = 0; i < 4; i++) {
-                expandedKeys[bytesGenerated] = expandedKeys[bytesGenerated - 16] ^ temp[i];
+                expandedKeys[bytesGenerated] = expandedKeys[bytesGenerated - BLOCK_SIZE] ^ temp[i];
                 bytesGenerated++;
             }
         }
@@ -205,15 +184,31 @@ public class AES_128 {
     }
 
     // TODO hack!
-    private int toHex(String arg) throws Exception {
-        if(arg.equals("0x00")){
-            return 0;
-        }
-        String sHex = String.format("%060x", new BigInteger(1, arg.getBytes("UTF-8")));
-        return Integer.parseInt(sHex, 16);
+    private int toHex(char ch) {
+        String sHex = String.format("%040x", (int) ch); // flip ascii to hex string
+        return Integer.parseInt(sHex, 16);        // parse hex string to integer
     }
 
-    private static int[] sbox = {
+    private void standardizeMessage(String message) {
+        int mlength = message.length();
+        this.lengthOfPaddedMessage = mlength;
+
+        if (this.lengthOfPaddedMessage % BLOCK_SIZE != 0) {
+            this.lengthOfPaddedMessage = (this.lengthOfPaddedMessage / BLOCK_SIZE + 1) * BLOCK_SIZE;
+        }
+
+        char[] charMessage = message.toCharArray();
+        this.paddedMessage = new char[this.lengthOfPaddedMessage];
+        for (int i = 0; i < this.lengthOfPaddedMessage; i++) {
+            if (i >= mlength) {
+                this.paddedMessage[i] = 0;
+            } else {
+                this.paddedMessage[i] = charMessage[i];
+            }
+        }
+    }
+
+    private static final int[] sbox = {
             0x63, 0x7c, 0x77, 0x7b, 0xf2, 0x6b, 0x6f, 0xc5, 0x30, 0x01, 0x67, 0x2b, 0xfe, 0xd7, 0xab, 0x76,
             0xca, 0x82, 0xc9, 0x7d, 0xfa, 0x59, 0x47, 0xf0, 0xad, 0xd4, 0xa2, 0xaf, 0x9c, 0xa4, 0x72, 0xc0,
             0xb7, 0xfd, 0x93, 0x26, 0x36, 0x3f, 0xf7, 0xcc, 0x34, 0xa5, 0xe5, 0xf1, 0x71, 0xd8, 0x31, 0x15,
@@ -232,7 +227,7 @@ public class AES_128 {
             0x8c, 0xa1, 0x89, 0x0d, 0xbf, 0xe6, 0x42, 0x68, 0x41, 0x99, 0x2d, 0x0f, 0xb0, 0x54, 0xbb, 0x16
     };
 
-    private static int mul2[] = {
+    private static final int mul2[] = {
             0x00, 0x02, 0x04, 0x06, 0x08, 0x0a, 0x0c, 0x0e, 0x10, 0x12, 0x14, 0x16, 0x18, 0x1a, 0x1c, 0x1e,
             0x20, 0x22, 0x24, 0x26, 0x28, 0x2a, 0x2c, 0x2e, 0x30, 0x32, 0x34, 0x36, 0x38, 0x3a, 0x3c, 0x3e,
             0x40, 0x42, 0x44, 0x46, 0x48, 0x4a, 0x4c, 0x4e, 0x50, 0x52, 0x54, 0x56, 0x58, 0x5a, 0x5c, 0x5e,
@@ -251,7 +246,7 @@ public class AES_128 {
             0xfb, 0xf9, 0xff, 0xfd, 0xf3, 0xf1, 0xf7, 0xf5, 0xeb, 0xe9, 0xef, 0xed, 0xe3, 0xe1, 0xe7, 0xe5
     };
 
-    private static int mul3[] = {
+    private static final int mul3[] = {
             0x00, 0x03, 0x06, 0x05, 0x0c, 0x0f, 0x0a, 0x09, 0x18, 0x1b, 0x1e, 0x1d, 0x14, 0x17, 0x12, 0x11,
             0x30, 0x33, 0x36, 0x35, 0x3c, 0x3f, 0x3a, 0x39, 0x28, 0x2b, 0x2e, 0x2d, 0x24, 0x27, 0x22, 0x21,
             0x60, 0x63, 0x66, 0x65, 0x6c, 0x6f, 0x6a, 0x69, 0x78, 0x7b, 0x7e, 0x7d, 0x74, 0x77, 0x72, 0x71,
@@ -270,7 +265,7 @@ public class AES_128 {
             0x0b, 0x08, 0x0d, 0x0e, 0x07, 0x04, 0x01, 0x02, 0x13, 0x10, 0x15, 0x16, 0x1f, 0x1c, 0x19, 0x1a
     };
 
-    private static int rcon[] = {
+    private static final int rcon[] = {
             0x8d, 0x01, 0x02, 0x04, 0x08, 0x10, 0x20, 0x40, 0x80, 0x1b, 0x36, 0x6c, 0xd8, 0xab, 0x4d, 0x9a,
             0x2f, 0x5e, 0xbc, 0x63, 0xc6, 0x97, 0x35, 0x6a, 0xd4, 0xb3, 0x7d, 0xfa, 0xef, 0xc5, 0x91, 0x39,
             0x72, 0xe4, 0xd3, 0xbd, 0x61, 0xc2, 0x9f, 0x25, 0x4a, 0x94, 0x33, 0x66, 0xcc, 0x83, 0x1d, 0x3a,
@@ -289,4 +284,11 @@ public class AES_128 {
             0x61, 0xc2, 0x9f, 0x25, 0x4a, 0x94, 0x33, 0x66, 0xcc, 0x83, 0x1d, 0x3a, 0x74, 0xe8, 0xcb, 0x8d
     };
 
+    private int getLengthOfPaddedMessage() {
+        return lengthOfPaddedMessage;
+    }
+
+    private char[] getPaddedMessage() {
+        return paddedMessage;
+    }
 }
